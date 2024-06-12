@@ -7,7 +7,12 @@ const PORT = process.env.PORT;
 
 
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: ["https://deploy-mern-1whq.ve cel.app"],
+    methods: ["POST", "GET"],
+    credentials: true
+}
+));
 app.use(express.json());
 
 const connectDB = async () => {
