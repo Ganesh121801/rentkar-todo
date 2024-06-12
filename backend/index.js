@@ -1,88 +1,51 @@
-const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors');
 const Todo = require('./model/Todo');
-const dotenv = require('dotenv').config();
-const PORT = process.env.PORT;
 
+mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => console.error('MongoDB connection error:', err));
 
-const app = express();
-app.use(cors({
-    origin: ["https://deploy-mern-1whq.ve cel.app"],
-    methods: ["POST", "GET"],
-    credentials: true
-}
-));
-app.use(express.json());
+module.exports = async (req, res) => {
+  const { method, body } = req;
 
-const connectDB = async () => {
-    try {
-      const db = await mongoose.connect("mongodb://127.0.0.1:27017/reg", {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-      });
-      console.log(`mongodb connected ${db.connection.host}`);
-    } catch (err) {
-      console.log(err);
-      process.exit(1);
-    }
-  };
-  connectDB();
-  
-  const ItemSchema = new mongoose.Schema({
-    name: {
-      type: String,
-      required: true,
-    },
-    position: {
-      type: String,
-      required: true,
-    },
-  });
-  const Item = mongoose.model("Item", ItemSchema);
-
-app.get('/', async (req, res) => {
-    try {
-        const data = await Todo.find()
-        res.json(data);
-    } catch (error) {
-        console.log(error);
-    }
-})
-
-app.put("/update/:id", async (req, res) => {
-    try {
-        const { id } = req.params;
-        const up = await Todo.findByIdAndUpdate({ _id: id }, { complete: true })
-        res.json(up)
-    } catch (error) {
-        console.log(error);
-    }
-})
-
-app.post("/add", async (req, res) => {
-    try {
-        const { title, description } = req.body;
-        const data = await Todo.create({
-            title: title,
-            description: description
-        })
-        res.send(data);
-    } catch (error) {
-        console.log(error);
-    }
-})
-
-app.delete('/delete/:id', async (req,res)=>{
-    try {
-        const {id} = req.params;
-        const del = await Todo.findOneAndDelete({_id: id})
-        res.json(del)
-    } catch (error) {
-        console.log(error);
-    }
-})
-
-app.listen(PORT, () => {
-    console.log(`Server is running at PORT http://localhost:${PORT}`);
-})
+  switch (method) {
+    case 'GET':
+      try {
+        const todos = await Todo.find();
+        res.status(200).json(todos);
+      } catch (error) {
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+      break;
+    case 'PUT':
+      try {
+        const { id } = req.query;
+        const updatedTodo = await Todo.findByIdAndUpdate(id, { complete: true });
+        res.status(200).json(updatedTodo);
+      } catch (error) {
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+      break;
+    case 'POST':
+      try {
+        const { title, description } = body;
+        const newTodo = await Todo.create({ title, description });
+        res.status(201).json(newTodo);
+      } catch (error) {
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+      break;
+    case 'DELETE':
+      try {
+        const { id } = req.query;
+        await Todo.findByIdAndDelete(id);
+        res.status(204).end();
+      } catch (error) {
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+      break;
+    default:
+      res.setHeader('Allow', ['GET', 'PUT', 'POST', 'DELETE']);
+      res.status(405).end(`Method ${method} Not Allowed`);
+  }
+};
